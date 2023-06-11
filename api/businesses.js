@@ -1,5 +1,6 @@
 const { Router } = require('express')
 const { ValidationError } = require('sequelize')
+const { requireAuthentication } = require('../lib/auth')
 
 const { Business, BusinessClientFields } = require('../models/business')
 const { Photo } = require('../models/photo')
@@ -10,7 +11,7 @@ const router = Router()
 /*
  * Route to return a list of businesses.
  */
-router.get('/', async function (req, res) {
+router.get('/', async (req, res) => {
   /*
    * Compute page number based on optional query string parameter `page`.
    * Make sure page is within allowed bounds.
@@ -55,15 +56,15 @@ router.get('/', async function (req, res) {
 /*
  * Route to create a new business.
  */
-router.post('/', async function (req, res, next) {
+router.post('/', requireAuthentication, async (req, res, next) => {
   try {
     const business = await Business.create(req.body, BusinessClientFields)
     res.status(201).send({ id: business.id })
-  } catch (e) {
-    if (e instanceof ValidationError) {
-      res.status(400).send({ error: e.message })
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      res.status(400).send({ error: error.message })
     } else {
-      throw e
+      throw error
     }
   }
 })
@@ -71,7 +72,7 @@ router.post('/', async function (req, res, next) {
 /*
  * Route to fetch info about a specific business.
  */
-router.get('/:businessId', async function (req, res, next) {
+router.get('/:businessId', async (req, res, next) => {
   const businessId = req.params.businessId
   const business = await Business.findByPk(businessId, {
     include: [ Photo, Review ]
@@ -86,7 +87,7 @@ router.get('/:businessId', async function (req, res, next) {
 /*
  * Route to update data for a business.
  */
-router.patch('/:businessId', async function (req, res, next) {
+router.patch('/:businessId', requireAuthentication, async (req, res, next) => {
   const businessId = req.params.businessId
   const result = await Business.update(req.body, {
     where: { id: businessId },
@@ -102,7 +103,7 @@ router.patch('/:businessId', async function (req, res, next) {
 /*
  * Route to delete a business.
  */
-router.delete('/:businessId', async function (req, res, next) {
+router.delete('/:businessId', requireAuthentication, async (req, res, next) => {
   const businessId = req.params.businessId
   const result = await Business.destroy({ where: { id: businessId }})
   if (result > 0) {
