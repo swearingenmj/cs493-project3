@@ -1,5 +1,6 @@
 const { Router } = require('express')
 const { ValidationError } = require('sequelize')
+const { requireAuthentication } = require('../lib/auth')
 
 const { Photo, PhotoClientFields } = require('../models/photo')
 
@@ -8,7 +9,7 @@ const router = Router()
 /*
  * Route to create a new photo.
  */
-router.post('/', async function (req, res, next) {
+router.post('/', requireAuthentication, async (req, res, next) => {
   try {
     const photo = await Photo.create(req.body, PhotoClientFields)
     res.status(201).send({ id: photo.id })
@@ -24,7 +25,7 @@ router.post('/', async function (req, res, next) {
 /*
  * Route to fetch info about a specific photo.
  */
-router.get('/:photoId', async function (req, res, next) {
+router.get('/:photoId', async (req, res, next) => {
   const photoId = req.params.photoId
   const photo = await Photo.findByPk(photoId)
   if (photo) {
@@ -37,7 +38,7 @@ router.get('/:photoId', async function (req, res, next) {
 /*
  * Route to update a photo.
  */
-router.patch('/:photoId', async function (req, res, next) {
+router.patch('/:photoId', requireAuthentication, async (req, res, next) => {
   const photoId = req.params.photoId
 
   /*
@@ -49,17 +50,23 @@ router.patch('/:photoId', async function (req, res, next) {
       field => field !== 'businessId' && field !== 'userId'
     )
   })
-  if (result[0] > 0) {
-    res.status(204).send()
+  if (req.user !== req.params.userId) {
+    res.status(403).send({
+      error: 'Unauthorized to access specified resource!'
+    })
   } else {
-    next()
-  }
+    if (result[0] > 0) {
+      res.status(204).send()
+    } else {
+      next()
+    }
+  }  
 })
 
 /*
  * Route to delete a photo.
  */
-router.delete('/:photoId', async function (req, res, next) {
+router.delete('/:photoId', requireAuthentication, async (req, res, next) => {
   const photoId = req.params.photoId
   const result = await Photo.destroy({ where: { id: photoId }})
   if (result > 0) {
