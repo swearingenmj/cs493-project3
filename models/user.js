@@ -2,11 +2,9 @@ const { DataTypes } = require('sequelize')
 
 const sequelize = require('../lib/sequelize')
 const bcrypt = require('bcryptjs');
-const passwordHash = await bcrypt.hash(user.password, 8);
-const usersCollection = mongoDB.collection('users')
 
 const User = sequelize.define('user', {
-    userId: { type: DataTypes.INTEGER, primaryKey, autoIncrement: true },
+    userId: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true, allowNull: false },
     name: { type: DataTypes.STRING, allowNull: false },
     email: { type: DataTypes.STRING, allowNull: false, unique: true },
     password: { type: DataTypes.STRING, allowNull: false, set(password) {
