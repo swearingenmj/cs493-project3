@@ -1,6 +1,6 @@
 const { Router } = require('express')
 const { ValidationError } = require('sequelize')
-const { requireAuthentication } = require('../lib/auth')
+const { requireAuthentication, generateAuthToken } = require('../lib/auth')
 
 const { Business, BusinessClientFields } = require('../models/business')
 const { Photo } = require('../models/photo')
@@ -57,15 +57,25 @@ router.get('/', async (req, res) => {
  * Route to create a new business.
  */
 router.post('/', requireAuthentication, async (req, res, next) => {
-  try {
-    const business = await Business.create(req.body, BusinessClientFields)
-    res.status(201).send({ id: business.id })
-  } catch (error) {
-    if (error instanceof ValidationError) {
-      res.status(400).send({ error: error.message })
-    } else {
-      throw error
+  if (req.body.ownerId === req.user) {
+    
+    try {
+      const business = await Business.create(req.body, BusinessClientFields)
+      res.status(201).send({ id: business.id })
+    } catch (error) {
+      
+      if (error instanceof ValidationError) {
+        res.status(400).send({ error: error.message })
+      } else {
+        throw error
+      }
+
     }
+
+  } else {
+    res.status(403).send({
+      error: 'Unauthorized to access specified resource'
+    })  
   }
 })
 
@@ -77,11 +87,13 @@ router.get('/:businessId', async (req, res, next) => {
   const business = await Business.findByPk(businessId, {
     include: [ Photo, Review ]
   })
+
   if (business) {
     res.status(200).send(business)
   } else {
     next()
   }
+
 })
 
 /*
@@ -93,11 +105,13 @@ router.patch('/:businessId', requireAuthentication, async (req, res, next) => {
     where: { id: businessId },
     fields: BusinessClientFields
   })
+
   if (result[0] > 0) {
     res.status(204).send()
   } else {
     next()
   }
+
 })
 
 /*
@@ -106,11 +120,13 @@ router.patch('/:businessId', requireAuthentication, async (req, res, next) => {
 router.delete('/:businessId', requireAuthentication, async (req, res, next) => {
   const businessId = req.params.businessId
   const result = await Business.destroy({ where: { id: businessId }})
+  
   if (result > 0) {
     res.status(204).send()
   } else {
     next()
   }
+  
 })
 
 module.exports = router
