@@ -5,6 +5,8 @@ const { Photo } = require('../models/photo')
 const { Review } = require('../models/review')
 const { User } = require('../models/user')
 
+const { authenticateUser, generateAuthToken } = require('../lib/auth')
+
 const router = Router()
 
 /*
@@ -13,6 +15,7 @@ const router = Router()
 router.get('/:userId/businesses', async (req, res) => {
   const userId = req.params.userId
   const userBusinesses = await Business.findAll({ where: { ownerId: userId }})
+  
   res.status(200).send({
     businesses: userBusinesses
   })
@@ -24,6 +27,7 @@ router.get('/:userId/businesses', async (req, res) => {
 router.get('/:userId/reviews', async (req, res) => {
   const userId = req.params.userId
   const userReviews = await Review.findAll({ where: { userId: userId }})
+  
   res.status(200).send({
     reviews: userReviews
   })
@@ -35,6 +39,7 @@ router.get('/:userId/reviews', async (req, res) => {
 router.get('/:userId/photos', async (req, res) => {
   const userId = req.params.userId
   const userPhotos = await Photo.findAll({ where: { userId: userId }})
+  
   res.status(200).send({
     photos: userPhotos
   })
@@ -46,6 +51,7 @@ router.get('/:userId/photos', async (req, res) => {
 router.get('/:userId', async (req, res) => {
   const userId = req.params.userId
   const user = await User.findByPk(userId)
+  
   if (user) {
     res.status(200).send({
       user: user
@@ -55,6 +61,7 @@ router.get('/:userId', async (req, res) => {
       error: 'User not found'
     })
   }
+
 })
 
 /*
@@ -63,14 +70,17 @@ router.get('/:userId', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const user = await User.create(req.body, { fields: ['name', 'email', 'password'] })
+    
     res.status(201).send({
-      id: user.id
+      id: user.userId
     })
   } catch (error) {
+    
     if (error.name === 'SequelizeUniqueConstraintError') {
       res.status(409).send({
         error: 'User already exists'
       })
+
     } else {
       res.status(400).send({
         error: 'Bad request'
@@ -84,11 +94,16 @@ router.post('/', async (req, res) => {
  */
 router.post('/login', async (req, res) => {
   const { email, password } = req.body
+
   if (email && password) {
+
     try {
-      const authenticatedUser = await User.authenticate(email, password)
+      const user = await User.findOne({ where: { email: email }})
+      const authenticatedUser = await authenticateUser(user, password)
+      
       if (authenticatedUser) {
-        const token = generateAuthToken(authenticatedUser.id)
+        const token = generateAuthToken(user.userId, user.admin)
+
         res.status(200).send({
           token: token
         })
@@ -97,16 +112,19 @@ router.post('/login', async (req, res) => {
           error: 'Authentication failed'
         })
       }
+
     } catch (error) {
       res.status(500).send({
         error: 'Internal server error'
       })
     }
+
   } else {
     res.status(400).send({
       error: 'Bad request'
     })
   }
+  
 })
 
 module.exports = router
